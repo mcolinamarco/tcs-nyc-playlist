@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.env.local
+*.p8
+.DS_Store
+coverage
+*.tsbuildinfo

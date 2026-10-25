@@ -1,0 +1,46 @@
+{
+  "name": "tcs-nyc-playlist",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Plan your TCS NYC Marathon playlist on the 2026 course: every song becomes a colored stretch of the route.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "start": "NODE_ENV=production tsx server/node.ts",
+    "preview": "npm run build && npm start",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "course": "node scripts/build-course.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@hono/node-server": "^1.19.17",
+    "hono": "^4.13.14",
+    "jose": "^6.2.13",
+    "lucide-react": "^0.577.0",
+    "maplibre-gl": "^5.24.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsx": "^4.23.15",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
+  }
+}
