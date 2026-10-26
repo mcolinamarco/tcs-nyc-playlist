@@ -16,7 +16,8 @@ export function HelpDialog() {
           </li>
           <li>
             <strong>Move songs.</strong> Drag a stretch of the course (long-press on touch screens), a block on the elevation strip, or a row in the list. The song snaps to the
-            nearest song boundary and everything else shifts around it. Or select a song and send it straight to a landmark.
+            nearest song boundary and everything else shifts around it. Or select a song and send it straight to a landmark. Scroll or pinch on the elevation strip to
+            zoom in for finer placement, and drag its background to pan.
           </li>
           <li>
             <strong>Save it.</strong> Update your own Spotify playlist in place, or save the order as a new Spotify or Apple Music playlist. Apple Music only allows new playlists.
@@ -35,7 +36,7 @@ export function HelpDialog() {
         </p>
         <h3>Shortcuts</h3>
         <p>
-          <kbd>⌘/Ctrl Z</kbd> undo · <kbd>⇧ ⌘/Ctrl Z</kbd> redo · <kbd>/</kbd> search songs · <kbd>Esc</kbd> deselect
+          <kbd>⌘/Ctrl Z</kbd> undo · <kbd>⇧ ⌘/Ctrl Z</kbd> redo · <kbd>/</kbd> search songs · <kbd>Esc</kbd> deselect · double-click the elevation strip to zoom back out
         </p>
         <p className="muted small">
           Map © OpenStreetMap contributors, OpenFreeMap. Course line from a public 2024 route, adjusted for the 2026 Bronx change. Not affiliated with NYRR or TCS.

@@ -40,11 +40,87 @@ const width = (extra: number): ExpressionSpecification => [
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 const TIMELINE_PAD = 176;
+const FIT_PADDING = { top: 60, bottom: TIMELINE_PAD, left: 40, right: 40 };
+const TRANSPARENT = 'rgba(0,0,0,0)';
+
+// --- Colouring the course with line-gradient ----------------------------------------
+// The whole course is one line. Songs are drawn as a step gradient along it, so a
+// pace change is just a paint update (no GeoJSON re-tiling), which keeps the slider
+// smooth. line-progress is measured in Web Mercator units, so course distances are
+// converted through the line's own Mercator length.
+const mercatorProgress: number[] = (() => {
+  const merc = ([lon, lat]: [number, number]) => [lon / 360, Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI)];
+  const pts = course.coords.map(merc);
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const total = cum[cum.length - 1];
+  return cum.map((c) => c / total);
+})();
+
+function progressAt(d: number): number {
+  const { dist } = course;
+  if (d <= 0) return 0;
+  if (d >= dist[dist.length - 1]) return 1;
+  let lo = 0;
+  let hi = dist.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (dist[mid] <= d) lo = mid;
+    else hi = mid;
+  }
+  const t = (d - dist[lo]) / (dist[hi] - dist[lo] || 1);
+  return mercatorProgress[lo] + t * (mercatorProgress[hi] - mercatorProgress[lo]);
+}
+
+/** A step gradient: `base` until the first stop, then each stop's colour from its distance on. */
+function stepGradient(base: string, stops: [d: number, color: string][]): ExpressionSpecification {
+  const expr: unknown[] = ['step', ['line-progress'], base];
+  let last = -1;
+  for (const [d, color] of stops) {
+    const p = Math.max(progressAt(d), last + 1e-7);
+    if (p >= 1) break;
+    expr.push(p, color);
+    last = p;
+  }
+  if (expr.length === 3) expr.push(0.9999999, base); // step needs at least one stop
+  return expr as ExpressionSpecification;
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+const silenceColor = (theme: Theme) => (theme === 'dark' ? '#363d4b' : '#c4c9d2');
+
+function songGradient(d: Derived, theme: Theme, active: string | null): ExpressionSpecification {
+  const stops: [number, string][] = [];
+  let end = 0;
+  for (const slot of d.schedule.slots) {
+    if (slot.phase !== 'race' || slot.endD - slot.startD < 0.5) continue;
+    const color = d.colors[slot.index];
+    stops.push([slot.startD, active && active !== slot.uid ? withAlpha(color, 0.45) : color]);
+    end = slot.endD;
+  }
+  if (end < course.distance - 0.5) stops.push([end, silenceColor(theme)]);
+  return stepGradient(silenceColor(theme), stops);
+}
+
+function focusGradient(d: Derived, uids: string[], color: (idx: number) => string): ExpressionSpecification {
+  const stops: [number, string][] = [];
+  for (const slot of d.schedule.slots) {
+    if (slot.phase !== 'race' || !uids.includes(slot.uid)) continue;
+    stops.push([slot.startD, color(slot.index)], [slot.endD, TRANSPARENT]);
+  }
+  stops.sort((a, b) => a[0] - b[0]);
+  return stepGradient(TRANSPARENT, stops);
+}
 
 function addCourseLayers(map: maplibregl.Map, theme: Theme) {
   const dark = theme === 'dark';
   map.addSource('course', {
     type: 'geojson',
+    lineMetrics: true,
     data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: course.coords } },
   });
   map.addSource('songs', { type: 'geojson', data: EMPTY });
@@ -59,34 +135,25 @@ function addCourseLayers(map: maplibregl.Map, theme: Theme) {
     paint: { 'line-color': dark ? '#000000' : '#ffffff', 'line-opacity': dark ? 0.7 : 0.95, 'line-width': width(7) },
   });
   map.addLayer({
-    id: 'course-base',
+    id: 'song-lines',
     type: 'line',
     source: 'course',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': dark ? '#363d4b' : '#c4c9d2', 'line-width': width(0) },
-  });
-  map.addLayer({
-    id: 'song-lines',
-    type: 'line',
-    source: 'songs',
-    layout: { 'line-cap': 'butt', 'line-join': 'round' },
-    paint: { 'line-color': ['get', 'color'], 'line-width': width(0) },
+    paint: { 'line-gradient': stepGradient(silenceColor(theme), []), 'line-width': width(0) },
   });
   map.addLayer({
     id: 'song-focus-casing',
     type: 'line',
-    source: 'songs',
-    filter: ['==', ['get', 'uid'], ''],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': dark ? '#ffffff' : '#0b0d12', 'line-width': width(7) },
+    source: 'course',
+    layout: { 'line-cap': 'butt', 'line-join': 'round' },
+    paint: { 'line-gradient': stepGradient(TRANSPARENT, []), 'line-width': width(7) },
   });
   map.addLayer({
     id: 'song-focus',
     type: 'line',
-    source: 'songs',
-    filter: ['==', ['get', 'uid'], ''],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': ['get', 'color'], 'line-width': width(2.5) },
+    source: 'course',
+    layout: { 'line-cap': 'butt', 'line-join': 'round' },
+    paint: { 'line-gradient': stepGradient(TRANSPARENT, []), 'line-width': width(2.5) },
   });
   map.addLayer({
     id: 'song-ticks',
@@ -207,12 +274,11 @@ export function MapView() {
       container,
       style: STYLES[initialTheme],
       bounds: course.bounds,
-      fitBoundsOptions: { padding: { top: 60, bottom: TIMELINE_PAD, left: 40, right: 40 } },
+      fitBoundsOptions: { padding: FIT_PADDING },
       attributionControl: { compact: true },
       dragRotate: false,
       pitchWithRotate: false,
       maxZoom: 18,
-      minZoom: 9,
     });
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
@@ -244,6 +310,30 @@ export function MapView() {
       fallbackTimer = setTimeout(useFallback, 8000);
       map.setStyle(STYLES[t], { diff: false });
     };
+
+    // Keep the view on the course: you can't zoom out past the whole course or pan
+    // away from it. Recomputed when the map changes size.
+    const applyLimits = () => {
+      map.setMaxBounds(null);
+      map.setMinZoom(0);
+      const cam = map.cameraForBounds(course.bounds, { padding: FIT_PADDING });
+      if (!cam || cam.zoom === undefined || !cam.center) return;
+      const saved = { center: map.getCenter(), zoom: map.getZoom() };
+      map.jumpTo({ center: cam.center, zoom: cam.zoom });
+      const b = map.getBounds();
+      // A little slack around the fitted view so the edges of the course aren't pinned to the screen edge.
+      const slack = 0.08;
+      const dx = (b.getEast() - b.getWest()) * slack;
+      const dy = (b.getNorth() - b.getSouth()) * slack;
+      map.setMaxBounds([
+        [b.getWest() - dx, b.getSouth() - dy],
+        [b.getEast() + dx, b.getNorth() + dy],
+      ]);
+      map.setMinZoom(cam.zoom - Math.log2(1 + 2 * slack));
+      map.jumpTo(saved);
+    };
+    map.once('load', applyLimits);
+    map.on('resize', applyLimits);
 
     const onZoom = () => {
       const z = map.getZoom();
@@ -422,26 +512,30 @@ export function MapView() {
     setBasemapRef.current(theme);
   }, [theme]);
 
-  // --- Song segments -------------------------------------------------------------------
+  // --- Song colours and focus highlight (paint-only, so they follow the pace slider live) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleGen || !map.getLayer('song-lines')) return;
+    const active = dragUid ?? selectedUid;
+    const focusIds = [active, hoverUid].filter((x): x is string => Boolean(x));
+    const casing = theme === 'dark' ? '#ffffff' : '#0b0d12';
+    map.setPaintProperty('song-lines', 'line-gradient', songGradient(derived, theme, active));
+    map.setPaintProperty('song-focus-casing', 'line-gradient', focusGradient(derived, focusIds, () => casing));
+    map.setPaintProperty('song-focus', 'line-gradient', focusGradient(derived, focusIds, (i) => derived.colors[i]));
+  }, [derived.schedule, derived.colors, selectedUid, hoverUid, dragUid, styleGen, theme]);
+
+  // --- Per-song features for hit-testing and boundary ticks ------------------------------
+  // These go through GeoJSON re-tiling, so they're only rebuilt once the schedule settles.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleGen || !map.getSource('songs')) return;
-    const { songs, ticks } = songFeatures(derived);
-    (map.getSource('songs') as GeoJSONSource).setData(songs);
-    (map.getSource('ticks') as GeoJSONSource).setData(ticks);
-  }, [derived.schedule, derived.colors, styleGen]);
-
-  // --- Focus / hover highlight -----------------------------------------------------------
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !styleGen || !map.getLayer('song-focus')) return;
-    const focusIds = [dragUid ?? selectedUid, hoverUid].filter((x): x is string => Boolean(x));
-    const filter: ExpressionSpecification = ['in', ['get', 'uid'], ['literal', focusIds]];
-    map.setFilter('song-focus', filter);
-    map.setFilter('song-focus-casing', filter);
-    const active = dragUid ?? selectedUid;
-    map.setPaintProperty('song-lines', 'line-opacity', active ? ['case', ['==', ['get', 'uid'], active], 1, 0.5] : 1);
-  }, [selectedUid, hoverUid, dragUid, styleGen]);
+    const timer = setTimeout(() => {
+      const { songs, ticks } = songFeatures(latest.current.derived);
+      (map.getSource('songs') as GeoJSONSource | undefined)?.setData(songs);
+      (map.getSource('ticks') as GeoJSONSource | undefined)?.setData(ticks);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [derived.schedule, styleGen]);
 
   // --- Cursor dot (timeline hover / drag target) ------------------------------------------
   useEffect(() => {
@@ -516,8 +610,7 @@ export function MapView() {
     return () => markers.forEach((m) => m.remove());
   }, [units]);
 
-  const fit = () =>
-    mapRef.current?.fitBounds(course.bounds, { padding: { top: 60, bottom: TIMELINE_PAD, left: 40, right: 40 }, duration: 700 });
+  const fit = () => mapRef.current?.fitBounds(course.bounds, { padding: FIT_PADDING, duration: 700 });
 
   return (
     <div className="map-wrap" data-zband={zoomBand} data-dragging={dragUid ? 'true' : undefined}>

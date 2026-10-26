@@ -1,0 +1,13 @@
+
+  VITE v7.3.7  ready in 1057 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+3:55:46 AM [vite] (client) hmr update /src/components/Timeline.tsx
+3:56:25 AM [vite] (client) hmr update /src/App.tsx, /src/components/MapView.tsx, /src/components/Sidebar.tsx, /src/components/SearchDialog.tsx, /src/components/SaveDialog.tsx, /src/components/SongCard.tsx, /src/components/Timeline.tsx, /src/components/PacePanel.tsx, /src/components/TrackList.tsx
+3:56:30 AM [vite] (client) hmr update /src/App.tsx, /src/components/MapView.tsx, /src/components/Sidebar.tsx, /src/components/SearchDialog.tsx, /src/components/SaveDialog.tsx, /src/components/SongCard.tsx, /src/components/Timeline.tsx, /src/components/PacePanel.tsx, /src/components/TrackList.tsx
+3:56:39 AM [vite] (client) hmr update /src/App.tsx, /src/components/MapView.tsx, /src/components/Sidebar.tsx, /src/components/SearchDialog.tsx, /src/components/SaveDialog.tsx, /src/components/SongCard.tsx, /src/components/Timeline.tsx, /src/components/PacePanel.tsx, /src/components/TrackList.tsx, /src/components/Artwork.tsx
+3:56:39 AM [vite] (client) hmr update /src/components/Timeline.tsx
+3:56:48 AM [vite] (client) hmr update /src/components/TrackList.tsx
+3:58:40 AM [vite] (client) hmr update /src/components/Timeline.tsx
+3:58:40 AM [vite] (client) hmr update /src/styles.css
+4:01:18 AM [vite] (client) hmr update /src/components/HelpDialog.tsx

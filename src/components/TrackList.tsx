@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useDeferredValue, useEffect, useRef } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -28,7 +28,12 @@ export function TrackList() {
   const dragSource = useDrag((s) => s.source);
   // While the list itself is being dragged, dnd-kit animates the rows, so the
   // list keeps the committed order; for map/timeline drags it follows the preview.
-  const { tracks, schedule, colors, model } = useDerived({ preview: dragSource !== 'list' });
+  const live = useDerived({ preview: dragSource !== 'list' });
+  // The list is the most expensive view to re-render. Let it trail a frame behind
+  // while the pace slider moves so the map and timeline stay smooth; while the list
+  // itself is being dragged it must stay exact.
+  const deferred = useDeferredValue(live);
+  const { tracks, schedule, colors, model } = dragSource === 'list' ? live : deferred;
   const selectedUid = usePlan((s) => s.selectedUid);
   const units = usePlan((s) => s.units);
   const previewUrl = useUi((s) => s.previewUrl);

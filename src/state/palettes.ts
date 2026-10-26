@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { useEffect, useMemo } from 'react';
-import { fallbackPalette, segmentColors, type Theme } from '../lib/colors';
+import { useEffect } from 'react';
+import { fallbackPalette } from '../lib/colors';
 import { cachedPalette, loadPalette } from '../lib/palette-loader';
 import type { Palette, Track } from '../lib/types';
 
@@ -45,13 +45,4 @@ export function usePaletteLoading(tracks: Track[], proxy: boolean) {
       void loadPalette(url, { proxy }).then((p) => usePalettes.getState().set(url, p));
     }
   }, [tracks, proxy, byUrl, failed]);
-}
-
-/** Album palettes and the colour each song gets on the course. */
-export function useTrackColors(tracks: Track[], theme: Theme): { palettes: Palette[]; colors: string[] } {
-  const byUrl = usePalettes((s) => s.byUrl);
-  return useMemo(() => {
-    const palettes = tracks.map((t) => paletteFor(t, byUrl));
-    return { palettes, colors: segmentColors(palettes, theme) };
-  }, [tracks, byUrl, theme]);
 }

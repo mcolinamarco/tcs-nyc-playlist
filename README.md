@@ -17,7 +17,7 @@ Drag songs along the route until the right song lands on the right bridge, then 
 - **Colours from the album art.** Each cover yields a primary and a secondary colour (k-means in OKLab). When two neighbouring songs would look alike, such as songs from the same album, the second one uses its secondary colour, so you can always tell where one song ends.
 - **Drag the snake.**
   - Grab a song's stretch of the course on the map (long-press on touch screens) and drop it elsewhere. It snaps to the nearest song boundary, and you see a live preview of everything shifting.
-  - You can also drag blocks on the elevation timeline, or rows in the list.
+  - You can also drag blocks on the elevation timeline, or rows in the list. The timeline zooms (scroll, pinch or the +/− buttons) for precise placement.
   - Or select a song and send it to a landmark ("start this song at the Queensboro Bridge") or to any mile.
 - **Load playlists.**
   - Paste any public Spotify or Apple Music playlist, album or song link.
@@ -28,6 +28,7 @@ Drag songs along the route until the right song lands on the right bridge, then 
   - Apple Music: save as a new library playlist. Apple's API can't reorder existing playlists.
   - Songs from another service are matched by ISRC, then by title and artist.
 - **Take the plan with you.** Copy the race plan as text, or download a CSV: song → mile range → race clock → landmark.
+- The map is locked to the course: you can zoom in freely but not out past the whole course or pan away from it.
 - Undo/redo (⌘Z / ⇧⌘Z), light and dark map, miles or km, phone layout, and the plan is saved in the browser.
 
 ## Quick start

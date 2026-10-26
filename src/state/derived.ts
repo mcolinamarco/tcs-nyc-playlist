@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { useEffect, useMemo } from 'react';
-import { buildTimeModel, type TimeModel } from '../lib/pacing';
-import { computeSchedule, type Schedule } from '../lib/schedule';
+import { buildTimeModel, type PaceSettings, type TimeModel } from '../lib/pacing';
+import { computeSchedule, type PlaybackSettings, type Schedule } from '../lib/schedule';
+import { segmentColors, type Theme } from '../lib/colors';
 import { catalogFind } from '../lib/services/catalog';
 import type { Palette, Track } from '../lib/types';
 import { usePlan } from './plan';
-import { useTrackColors } from './palettes';
+import { paletteFor, usePalettes } from './palettes';
 
 /** Live state while a song is being dragged along the course or timeline. */
 interface DragState {
@@ -55,13 +56,35 @@ export function useDerived(opts: { preview?: boolean } = {}): Derived {
   const pace = usePlan((s) => s.pace);
   const playback = usePlan((s) => s.playback);
   const theme = usePlan((s) => s.theme);
+  const byUrl = usePalettes((s) => s.byUrl);
   const previewOrder = useDrag((s) => s.order);
   const tracks = (opts.preview !== false && previewOrder) || planTracks;
-  const model = useMemo(() => buildTimeModel(pace), [pace]);
-  const schedule = useMemo(() => computeSchedule(tracks, model, playback), [tracks, model, playback]);
-  const { palettes, colors } = useTrackColors(tracks, theme);
-  return { tracks, model, schedule, palettes, colors };
+  // Shared across every component that asks, so a pace change is computed once.
+  const model = sharedModel(pace);
+  const schedule = sharedSchedule(tracks, model, playback);
+  const { palettes, colors } = sharedColors(tracks, byUrl, theme);
+  return useMemo(() => ({ tracks, model, schedule, palettes, colors }), [tracks, model, schedule, palettes, colors]);
 }
+
+/** Remembers the last few results by argument identity. */
+function memoByArgs<A extends unknown[], R>(fn: (...args: A) => R, size = 4): (...args: A) => R {
+  const entries: { args: A; result: R }[] = [];
+  return (...args: A) => {
+    const hit = entries.find((e) => e.args.length === args.length && e.args.every((a, i) => a === args[i]));
+    if (hit) return hit.result;
+    const result = fn(...args);
+    entries.unshift({ args, result });
+    if (entries.length > size) entries.pop();
+    return result;
+  };
+}
+
+const sharedModel = memoByArgs((pace: PaceSettings) => buildTimeModel(pace));
+const sharedSchedule = memoByArgs((tracks: Track[], model: TimeModel, playback: PlaybackSettings) => computeSchedule(tracks, model, playback));
+const sharedColors = memoByArgs((tracks: Track[], byUrl: Record<string, Palette>, theme: Theme) => {
+  const palettes = tracks.map((t) => paletteFor(t, byUrl));
+  return { palettes, colors: segmentColors(palettes, theme) };
+});
 
 // --- Demo enrichment ---------------------------------------------------------------
 
